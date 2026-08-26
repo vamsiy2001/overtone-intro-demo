@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grounded introduction drafts &mdash; a matchmaking AI prototype</title>
+<style>
+  :root {
+    --ink:#221F1D; --paper:#F3EEE7; --paper-2:#EAE3D8; --wine:#6E2E3D; --wine-ink:#3E1A24;
+    --gold:#B4894F; --gold-ink:#6B4F27; --line:#D9D0C2; --muted:#8A8478;
+    --ok:#3F6B4C; --ok-bg:#E4EDE4; --warn:#A85C2A; --warn-bg:#F5E4D5;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#E7E0D3; font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; color:var(--ink); }
+  .wrap { max-width:900px; margin:0 auto; padding:40px 20px 60px; }
+  .card { background:var(--paper); border-radius:14px; padding:28px 30px 32px; }
+  .serif { font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif; }
+  textarea { width:100%; box-sizing:border-box; height:150px; resize:vertical; border:1px solid var(--line); border-radius:8px; background:#fff; padding:10px 12px; font-size:13px; line-height:1.5; color:var(--ink); font-family:inherit; }
+  button { cursor:pointer; }
+  a { color: var(--wine-ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="text-align:center; margin-bottom:16px; font-size:12px; color:#8A8478;">
+    A prototype built by <a href="https://github.com/vamsiy2001" target="_blank" rel="noopener">Vamsi Krishna Yerubandi</a>
+    &middot; <a href="https://vamsiy2001.github.io" target="_blank" rel="noopener">portfolio</a>
+  </div>
+
+  <div class="card">
+    <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:4px;">
+      <div class="serif" style="font-size:22px; letter-spacing:0.2px;">Introduction draft &amp; eval</div>
+      <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted);">prototype</div>
+    </div>
+    <div style="font-size:13px; color:var(--muted); margin-bottom:20px;">
+      Two voice intakes in, one grounded introduction out &mdash; checked before it reaches a matchmaker.
+      Runs on Gemini's free API, in your browser, with your own key.
+    </div>
+
+    <div id="key-box" style="background:var(--paper-2); border-radius:10px; padding:14px 16px; margin-bottom:22px;">
+      <div style="font-size:12px; font-weight:600; margin-bottom:6px;">Gemini API key</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input id="ot-key" type="password" placeholder="Paste your free Gemini API key"
+          style="flex:1; min-width:220px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font-size:13px; font-family:inherit;" />
+        <button id="ot-key-save" style="padding:9px 16px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:13px;">Use key</button>
+      </div>
+      <div style="font-size:11px; color:var(--muted); margin-top:8px;">
+        Free, no card needed: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
+        Your key stays in this browser and is sent only to Google, never to any server of mine.
+        <label style="margin-left:8px;"><input id="ot-key-remember" type="checkbox" /> remember it here</label>
+      </div>
+      <div id="ot-key-status" style="font-size:12px; margin-top:6px; display:none;"></div>
+    </div>
+
+    <div id="ot-inputs" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <div>
+        <div style="font-size:12px; font-weight:600; color:var(--wine-ink); margin-bottom:6px;">PERSON A &middot; voice intake transcript</div>
+        <textarea id="ot-t1">I think what I want most is someone who's genuinely honest with me, even when it's uncomfortable. I'm pretty direct myself, sometimes too direct, my last partner said I could be blunt. I love my work, I'm building my career in tech and I'm ambitious about it, but I don't want someone who only talks about work. I like routine on weekdays, but I want someone who'll push me to try new things on weekends, travel, weird restaurants, that kind of thing. Dry, sarcastic humor is a must. A dealbreaker for me is someone who avoids conflict, I need to actually talk things through when something's wrong.</textarea>
+      </div>
+      <div>
+        <div style="font-size:12px; font-weight:600; color:var(--gold-ink); margin-bottom:6px;">PERSON B &middot; voice intake transcript</div>
+        <textarea id="ot-t2">Family matters a lot to me, I want to end up with someone who sees kids and a real home life in their future, that's non-negotiable long term. I'm creative, I paint on weekends, and I need a partner who's curious about trying new things, new places, new food, I get bored easily. When there's conflict I tend to need a bit of space before I can talk about it properly, jumping straight into it makes me shut down. I've got a quieter sense of humor, more observational than loud. Honesty matters to me too, I just need it delivered with some warmth.</textarea>
+      </div>
+    </div>
+
+    <button id="ot-run" style="margin-top:18px; width:100%; padding:12px; border:none; border-radius:8px; background:var(--wine); color:#fff; font-size:14px; font-weight:600; letter-spacing:0.2px;" disabled>
+      Add a key above to draft the introduction
+    </button>
+    <div id="ot-error" style="display:none; margin-top:10px; font-size:12px; background:var(--warn-bg); color:var(--warn); border-radius:8px; padding:10px 12px;"></div>
+
+    <div id="ot-steps" style="display:none; margin-top:22px; padding:14px 16px; background:var(--paper-2); border-radius:10px; font-size:12px; color:var(--muted);">
+      <div id="ot-step-1" style="margin-bottom:5px;">&#9675; extracting profile traits from each transcript</div>
+      <div id="ot-step-2" style="margin-bottom:5px;">&#9675; retrieving relevant relationship-science context</div>
+      <div id="ot-step-3" style="margin-bottom:5px;">&#9675; drafting the introduction narrative</div>
+      <div id="ot-step-4">&#9675; running the groundedness eval before release</div>
+    </div>
+
+    <svg id="ot-wave" viewBox="0 0 860 90" style="display:none; width:100%; height:90px; margin-top:22px;">
+      <path id="ot-wave-a" d="" fill="none" stroke="#6E2E3D" stroke-width="2" opacity="0.75"/>
+      <path id="ot-wave-b" d="" fill="none" stroke="#B4894F" stroke-width="2" opacity="0.75"/>
+      <rect id="ot-wave-band" x="380" y="0" width="0" height="90" fill="#6E2E3D" opacity="0"/>
+    </svg>
+
+    <div id="ot-results" style="display:none; margin-top:22px;">
+      <div style="font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:8px;">Grounded in</div>
+      <div id="ot-snippets" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px;"></div>
+
+      <div style="font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:8px;">Draft introduction</div>
+      <div id="ot-narrative" class="serif" style="background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px 18px; font-size:15px; line-height:1.65;"></div>
+
+      <div style="font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; margin:20px 0 8px;">Eval &middot; before this reaches a matchmaker</div>
+      <div id="ot-eval" style="border-radius:10px; padding:14px 16px;"></div>
+    </div>
+  </div>
+
+  <div style="text-align:center; margin-top:16px; font-size:11px; color:#8A8478;">
+    Prototype only. Not affiliated with or endorsed by any matchmaking company.
+  </div>
+</div>
+
+<script>
+(function() {
+  const MODEL = 'gemini-2.5-flash';
+  const CORPUS = [
+    { id: 'attachment', tag: 'attachment security', keywords: ['honest','trust','conflict','space','talk','avoid'], text: 'Partners who both lean toward secure attachment tend to handle conflict with less defensiveness and recover faster after disagreements.' },
+    { id: 'values', tag: 'values alignment', keywords: ['family','career','ambitious','kids','home','long term','ambition'], text: 'Long-term satisfaction correlates more strongly with alignment on core values, family, ambition, home life, than with overlap in hobbies.' },
+    { id: 'conflict', tag: 'conflict style', keywords: ['conflict','direct','space','shut down','talk','avoid'], text: 'A direct partner paired with one who needs processing time before discussing conflict is a common friction point, but it resolves well once both agree on a pause-then-talk pattern.' },
+    { id: 'novelty', tag: 'novelty vs. routine', keywords: ['routine','new','travel','bored','curious','weekends'], text: 'Pairing a routine-leaning partner with a novelty-seeking one works best when both frame the difference as complementary rather than as something to fix in the other.' },
+    { id: 'humor', tag: 'shared humor', keywords: ['humor','sarcastic','dry','quiet','observational','funny'], text: 'A shared sense of humor, even across different styles like dry and observational, is one of the stronger early predictors of perceived compatibility.' },
+    { id: 'directness', tag: 'communication directness', keywords: ['blunt','direct','honest','warmth','delivered'], text: 'Mismatched directness, one partner blunt, one preferring warmth in delivery, is manageable when both name the difference early rather than treating it as a character flaw.' }
+  ];
+
+  const $ = id => document.getElementById(id);
+  let apiKey = localStorage.getItem('ot_gemini_key') || '';
+
+  function refreshRunButton() {
+    const btn = $('ot-run');
+    if (apiKey) {
+      btn.disabled = false;
+      btn.textContent = 'Draft the introduction';
+    } else {
+      btn.disabled = true;
+      btn.textContent = 'Add a key above to draft the introduction';
+    }
+  }
+
+  if (apiKey) {
+    $('ot-key').value = apiKey;
+    $('ot-key-remember').checked = true;
+  }
+  refreshRunButton();
+
+  $('ot-key-save').addEventListener('click', () => {
+    apiKey = $('ot-key').value.trim();
+    if ($('ot-key-remember').checked && apiKey) {
+      localStorage.setItem('ot_gemini_key', apiKey);
+    } else {
+      localStorage.removeItem('ot_gemini_key');
+    }
+    const status = $('ot-key-status');
+    status.style.display = 'block';
+    status.style.color = apiKey ? 'var(--ok)' : 'var(--warn)';
+    status.textContent = apiKey ? 'Key set for this session.' : 'Paste a key to continue.';
+    refreshRunButton();
+  });
+
+  function setStep(n, state) {
+    const el = $('ot-step-' + n);
+    const symbol = state === 'done' ? '&#10003;' : state === 'active' ? '&#9679;' : '&#9675;';
+    const color = state === 'done' ? 'var(--ok)' : state === 'active' ? 'var(--wine)' : 'var(--muted)';
+    el.style.color = color;
+    el.innerHTML = symbol + ' ' + el.textContent.replace(/^[^ ]+ /, '');
+  }
+
+  async function callGemini(prompt, jsonMode) {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent?key=' + encodeURIComponent(apiKey);
+    const body = { contents: [{ parts: [{ text: prompt }] }] };
+    if (jsonMode) body.generationConfig = { responseMimeType: 'application/json' };
+    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await resp.json();
+    if (!resp.ok) {
+      const msg = (data.error && data.error.message) || ('request failed with status ' + resp.status);
+      throw new Error(msg);
+    }
+    const cand = data.candidates && data.candidates[0];
+    const text = cand && cand.content && cand.content.parts && cand.content.parts.map(p => p.text || '').join('');
+    if (!text) throw new Error('empty response from the model');
+    return text;
+  }
+
+  function parseJSON(raw) {
+    const cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleaned);
+  }
+
+  async function extractTraits(transcript, label) {
+    const prompt = 'You are extracting a structured compatibility profile from a voice intake transcript for a matchmaking service. ' +
+      'Return ONLY valid JSON, no preamble, no markdown fences, with this exact shape: ' +
+      '{"coreValues": string[], "communicationStyle": string, "conflictStyle": string, "noveltyVsRoutine": string, "humorStyle": string, "dealbreakers": string[]}. ' +
+      'Base every field strictly on what is stated or clearly implied in the transcript below. Keep each field short, a phrase not a paragraph.\n\n' +
+      'Transcript (' + label + '):\n' + transcript;
+    const raw = await callGemini(prompt, true);
+    return parseJSON(raw);
+  }
+
+  function retrieveSnippets(traitsA, traitsB) {
+    const text = JSON.stringify(traitsA).toLowerCase() + ' ' + JSON.stringify(traitsB).toLowerCase();
+    const scored = CORPUS.map(s => ({ ...s, score: s.keywords.reduce((acc, k) => acc + (text.includes(k) ? 1 : 0), 0) }));
+    scored.sort((a, b) => b.score - a.score);
+    return scored.filter(s => s.score > 0).slice(0, 3);
+  }
+
+  async function generateNarrative(traitsA, traitsB, snippets) {
+    const prompt = 'You are drafting a short introduction narrative for a human matchmaker to review before it is sent to two daters. ' +
+      'Write 110-150 words explaining why these two people could be a good match. ' +
+      'Ground every specific compatibility claim in either the trait data given or the research snippets given below, cite a snippet by writing its id in brackets like [attachment] right after the claim it supports. ' +
+      'Do not invent any fact not present in the data below. End with one open question the matchmaker should verify in person before introducing them.\n\n' +
+      'Person A traits: ' + JSON.stringify(traitsA) + '\n' +
+      'Person B traits: ' + JSON.stringify(traitsB) + '\n' +
+      'Research snippets: ' + JSON.stringify(snippets.map(s => ({ id: s.id, text: s.text })));
+    return (await callGemini(prompt, false)).trim();
+  }
+
+  async function evaluateNarrative(narrative, traitsA, traitsB, snippets) {
+    const prompt = 'You are an evaluation judge for a matchmaking AI. Check the introduction narrative below against the source data it was allowed to use. ' +
+      'Return ONLY valid JSON, no markdown fences, with this exact shape: ' +
+      '{"groundednessScore": number (1-5), "unsupportedClaims": string[], "verdict": string}. ' +
+      'A claim is unsupported if it is not backed by the trait data or the research snippets. verdict should be a one-line sentence: either that it is ready for matchmaker review, or that it needs revision and why.\n\n' +
+      'Narrative: ' + narrative + '\n\n' +
+      'Person A traits: ' + JSON.stringify(traitsA) + '\n' +
+      'Person B traits: ' + JSON.stringify(traitsB) + '\n' +
+      'Research snippets: ' + JSON.stringify(snippets.map(s => ({ id: s.id, text: s.text })));
+    const raw = await callGemini(prompt, true);
+    return parseJSON(raw);
+  }
+
+  function renderSnippets(snippets) {
+    const box = $('ot-snippets');
+    box.innerHTML = '';
+    snippets.forEach(s => {
+      const chip = document.createElement('div');
+      chip.style.cssText = 'font-size:12px; background:#fff; border:1px solid var(--line); border-radius:20px; padding:6px 12px;';
+      chip.innerHTML = '<span style="font-family:SFMono-Regular,Menlo,monospace; color:var(--gold-ink); margin-right:6px;">[' + s.id + ']</span>' + s.tag;
+      box.appendChild(chip);
+    });
+  }
+
+  function renderNarrative(text, snippets) {
+    let html = text;
+    snippets.forEach(s => {
+      html = html.split('[' + s.id + ']').join('<span style="font-family:SFMono-Regular,Menlo,monospace; font-size:12px; color:var(--gold-ink); background:#F5EAD8; padding:1px 5px; border-radius:4px;">[' + s.id + ']</span>');
+    });
+    $('ot-narrative').innerHTML = html;
+  }
+
+  function renderEval(ev) {
+    const good = ev.groundednessScore >= 4 && (!ev.unsupportedClaims || ev.unsupportedClaims.length === 0);
+    const box = $('ot-eval');
+    box.style.background = good ? 'var(--ok-bg)' : 'var(--warn-bg)';
+    box.style.color = good ? 'var(--ok)' : 'var(--warn)';
+    let html = '<div style="font-size:14px; font-weight:600; margin-bottom:4px;">' +
+      (good ? '&#10003; ' : '&#9888; ') + 'Groundedness ' + ev.groundednessScore + '/5 &mdash; ' +
+      (good ? 'ready for matchmaker review' : 'needs a human look before it goes out') + '</div>';
+    html += '<div style="font-size:13px; opacity:0.9;">' + ev.verdict + '</div>';
+    if (ev.unsupportedClaims && ev.unsupportedClaims.length) {
+      html += '<div style="font-size:12px; margin-top:8px;">Flagged claims: ' + ev.unsupportedClaims.join('; ') + '</div>';
+    }
+    box.innerHTML = html;
+  }
+
+  function drawWave(score) {
+    const wave = $('ot-wave');
+    wave.style.display = 'block';
+    const wA = [], wB = [];
+    for (let x = 0; x <= 860; x += 4) {
+      const yA = 45 + 22 * Math.sin(x / 34);
+      const yB = 45 + 22 * Math.sin(x / 34 + 0.9);
+      wA.push((x === 0 ? 'M' : 'L') + x + ' ' + yA.toFixed(1));
+      wB.push((x === 0 ? 'M' : 'L') + x + ' ' + yB.toFixed(1));
+    }
+    $('ot-wave-a').setAttribute('d', wA.join(' '));
+    $('ot-wave-b').setAttribute('d', wB.join(' '));
+    const band = $('ot-wave-band');
+    const width = (score / 5) * 300;
+    band.setAttribute('x', 430 - width / 2);
+    band.setAttribute('width', Math.max(width, 0));
+    band.setAttribute('opacity', 0.12);
+  }
+
+  $('ot-run').addEventListener('click', async () => {
+    const errBox = $('ot-error');
+    const stepsBox = $('ot-steps');
+    const resultsBox = $('ot-results');
+    errBox.style.display = 'none';
+
+    const t1 = $('ot-t1').value.trim();
+    const t2 = $('ot-t2').value.trim();
+    if (!apiKey) { errBox.style.display = 'block'; errBox.textContent = 'Add a Gemini API key first.'; return; }
+    if (!t1 || !t2) { errBox.style.display = 'block'; errBox.textContent = 'Both transcripts need at least a sentence to work with.'; return; }
+
+    const btn = $('ot-run');
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    stepsBox.style.display = 'block';
+    resultsBox.style.display = 'none';
+    $('ot-wave').style.display = 'none';
+    [1,2,3,4].forEach(n => setStep(n, 'pending'));
+
+    try {
+      setStep(1, 'active');
+      const [traitsA, traitsB] = await Promise.all([extractTraits(t1, 'Person A'), extractTraits(t2, 'Person B')]);
+      setStep(1, 'done');
+
+      setStep(2, 'active');
+      const snippets = retrieveSnippets(traitsA, traitsB);
+      setStep(2, 'done');
+
+      setStep(3, 'active');
+      const narrative = await generateNarrative(traitsA, traitsB, snippets);
+      setStep(3, 'done');
+
+      setStep(4, 'active');
+      const ev = await evaluateNarrative(narrative, traitsA, traitsB, snippets);
+      setStep(4, 'done');
+
+      renderSnippets(snippets);
+      renderNarrative(narrative, snippets);
+      renderEval(ev);
+      drawWave(ev.groundednessScore || 0);
+      resultsBox.style.display = 'block';
+    } catch (e) {
+      errBox.style.display = 'block';
+      errBox.textContent = 'Something broke mid-pipeline: ' + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  });
+})();
+</script>
+</body>
+</html>
