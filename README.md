@@ -8,7 +8,7 @@ A small prototype of what a transparent, evaluated "why you might match" feature
 
 Two mock voice-intake transcripts go in. The pipeline:
 
-1. **Extracts** a structured compatibility profile from each transcript (values, communication style, conflict style, novelty vs. routine, humor, dealbreakers) via a JSON-mode call to Llama 3.3 70B on Groq.
+1. **Extracts** a structured compatibility profile from each transcript (values, communication style, conflict style, novelty vs. routine, humor, dealbreakers) via a JSON-mode call to `openai/gpt-oss-120b` on Groq.
 2. **Retrieves** the relevant snippets from a small relationship-science reference set, based on the extracted traits, not a full vector DB for this prototype, but the same retrieve-then-generate shape a production RAG pipeline would use.
 3. **Drafts** a short introduction narrative, instructed to cite a retrieved snippet inline for every specific compatibility claim it makes.
 4. **Evaluates** the draft with a second model call acting as an LLM judge: a groundedness score, a list of any claim not actually backed by the trait data or the snippets, and a plain verdict on whether it's ready for a human matchmaker to review.
@@ -34,7 +34,7 @@ This calls the Groq API directly from the browser with an embedded key, which is
 
 ## Stack
 
-Vanilla HTML/CSS/JS, no dependencies, no build step. Model: `llama-3.3-70b-versatile` via [Groq](https://groq.com) (free tier, no card required).
+Vanilla HTML/CSS/JS, no dependencies, no build step. Model: `openai/gpt-oss-120b` via [Groq](https://groq.com) (free tier, no card required).
 
 ---
 
