@@ -2,13 +2,13 @@
 
 A small prototype of what a transparent, evaluated "why you might match" feature could look like for a modern matchmaking product. Built after reading Overtone's job posting for a founding Applied AI/ML Engineer, as a working example rather than another bullet point.
 
-**[Try it live](#)** — paste a free Gemini API key, no backend required.
+**[Try it live](https://vamsiy2001.github.io/overtone-intro-demo/)** — open it and click through, no setup needed.
 
 ## What it does
 
 Two mock voice-intake transcripts go in. The pipeline:
 
-1. **Extracts** a structured compatibility profile from each transcript (values, communication style, conflict style, novelty vs. routine, humor, dealbreakers) via a JSON-mode Gemini call.
+1. **Extracts** a structured compatibility profile from each transcript (values, communication style, conflict style, novelty vs. routine, humor, dealbreakers) via a JSON-mode call to Llama 3.3 70B on Groq.
 2. **Retrieves** the relevant snippets from a small relationship-science reference set, based on the extracted traits, not a full vector DB for this prototype, but the same retrieve-then-generate shape a production RAG pipeline would use.
 3. **Drafts** a short introduction narrative, instructed to cite a retrieved snippet inline for every specific compatibility claim it makes.
 4. **Evaluates** the draft with a second model call acting as an LLM judge: a groundedness score, a list of any claim not actually backed by the trait data or the snippets, and a plain verdict on whether it's ready for a human matchmaker to review.
@@ -24,19 +24,17 @@ Overtone's posting names two things almost directly: "matchmaking insight genera
 
 ## Running it
 
-It's a single static HTML file, no build step, no backend.
+It's a single static HTML file, no build step, no backend, no setup. Open the live link and use it.
 
-1. Get a free Gemini API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (no credit card).
-2. Open the page, paste the key in, and run it.
-3. Optionally check "remember it here" to keep the key in your browser's local storage. It's never sent anywhere but Google's API.
+The API key is baked into the client-side code, on Groq's free tier (no card required, so the worst case if it's misused is the key needing a rotation, not a bill). Groq doesn't support Google-style referrer-restricted keys, so this is a deliberate, disclosed tradeoff for a portfolio demo rather than something I'd ship this way in production; see the limitation below.
 
 ## A deliberate limitation
 
-This calls the Gemini API directly from the browser with a user-supplied key, which is fine for a personal demo but is not how a real product should ship a key-gated feature: a production version would put this behind a small server-side proxy so no key, not even a restricted one, ever reaches the client. Said differently, wanted to be upfront about the corner cut here rather than pretend it isn't one.
+This calls the Groq API directly from the browser with an embedded key, which is fine for a personal demo but is not how a real product should ship a key-gated feature: a production version would put this behind a small server-side proxy so no key, not even a restricted one, ever reaches the client. Said differently, wanted to be upfront about the corner cut here rather than pretend it isn't one.
 
 ## Stack
 
-Vanilla HTML/CSS/JS, no dependencies, no build step. Model: `gemini-2.5-flash` (Google's free tier).
+Vanilla HTML/CSS/JS, no dependencies, no build step. Model: `llama-3.3-70b-versatile` via [Groq](https://groq.com) (free tier, no card required).
 
 ---
 

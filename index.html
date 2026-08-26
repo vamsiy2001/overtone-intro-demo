@@ -34,22 +34,6 @@
     </div>
     <div style="font-size:13px; color:var(--muted); margin-bottom:20px;">
       Two voice intakes in, one grounded introduction out &mdash; checked before it reaches a matchmaker.
-      Runs on Gemini's free API, in your browser, with your own key.
-    </div>
-
-    <div id="key-box" style="background:var(--paper-2); border-radius:10px; padding:14px 16px; margin-bottom:22px;">
-      <div style="font-size:12px; font-weight:600; margin-bottom:6px;">Gemini API key</div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <input id="ot-key" type="password" placeholder="Paste your free Gemini API key"
-          style="flex:1; min-width:220px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font-size:13px; font-family:inherit;" />
-        <button id="ot-key-save" style="padding:9px 16px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:13px;">Use key</button>
-      </div>
-      <div style="font-size:11px; color:var(--muted); margin-top:8px;">
-        Free, no card needed: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
-        Your key stays in this browser and is sent only to Google, never to any server of mine.
-        <label style="margin-left:8px;"><input id="ot-key-remember" type="checkbox" /> remember it here</label>
-      </div>
-      <div id="ot-key-status" style="font-size:12px; margin-top:6px; display:none;"></div>
     </div>
 
     <div id="ot-inputs" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
@@ -63,9 +47,7 @@
       </div>
     </div>
 
-    <button id="ot-run" style="margin-top:18px; width:100%; padding:12px; border:none; border-radius:8px; background:var(--wine); color:#fff; font-size:14px; font-weight:600; letter-spacing:0.2px;" disabled>
-      Add a key above to draft the introduction
-    </button>
+    <button id="ot-run" style="margin-top:18px; width:100%; padding:12px; border:none; border-radius:8px; background:var(--wine); color:#fff; font-size:14px; font-weight:600; letter-spacing:0.2px;">Draft the introduction</button>
     <div id="ot-error" style="display:none; margin-top:10px; font-size:12px; background:var(--warn-bg); color:var(--warn); border-radius:8px; padding:10px 12px;"></div>
 
     <div id="ot-steps" style="display:none; margin-top:22px; padding:14px 16px; background:var(--paper-2); border-radius:10px; font-size:12px; color:var(--muted);">
@@ -100,7 +82,8 @@
 
 <script>
 (function() {
-  const MODEL = 'gemini-2.5-flash';
+  const MODEL = 'llama-3.3-70b-versatile';
+  const GROQ_API_KEY = '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';
   const CORPUS = [
     { id: 'attachment', tag: 'attachment security', keywords: ['honest','trust','conflict','space','talk','avoid'], text: 'Partners who both lean toward secure attachment tend to handle conflict with less defensiveness and recover faster after disagreements.' },
     { id: 'values', tag: 'values alignment', keywords: ['family','career','ambitious','kids','home','long term','ambition'], text: 'Long-term satisfaction correlates more strongly with alignment on core values, family, ambition, home life, than with overlap in hobbies.' },
@@ -111,38 +94,6 @@
   ];
 
   const $ = id => document.getElementById(id);
-  let apiKey = localStorage.getItem('ot_gemini_key') || '';
-
-  function refreshRunButton() {
-    const btn = $('ot-run');
-    if (apiKey) {
-      btn.disabled = false;
-      btn.textContent = 'Draft the introduction';
-    } else {
-      btn.disabled = true;
-      btn.textContent = 'Add a key above to draft the introduction';
-    }
-  }
-
-  if (apiKey) {
-    $('ot-key').value = apiKey;
-    $('ot-key-remember').checked = true;
-  }
-  refreshRunButton();
-
-  $('ot-key-save').addEventListener('click', () => {
-    apiKey = $('ot-key').value.trim();
-    if ($('ot-key-remember').checked && apiKey) {
-      localStorage.setItem('ot_gemini_key', apiKey);
-    } else {
-      localStorage.removeItem('ot_gemini_key');
-    }
-    const status = $('ot-key-status');
-    status.style.display = 'block';
-    status.style.color = apiKey ? 'var(--ok)' : 'var(--warn)';
-    status.textContent = apiKey ? 'Key set for this session.' : 'Paste a key to continue.';
-    refreshRunButton();
-  });
 
   function setStep(n, state) {
     const el = $('ot-step-' + n);
@@ -152,18 +103,25 @@
     el.innerHTML = symbol + ' ' + el.textContent.replace(/^[^ ]+ /, '');
   }
 
-  async function callGemini(prompt, jsonMode) {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent?key=' + encodeURIComponent(apiKey);
-    const body = { contents: [{ parts: [{ text: prompt }] }] };
-    if (jsonMode) body.generationConfig = { responseMimeType: 'application/json' };
-    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  async function callGroq(prompt, jsonMode) {
+    const url = 'https://api.groq.com/openai/v1/chat/completions';
+    const body = {
+      model: MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.4
+    };
+    if (jsonMode) body.response_format = { type: 'json_object' };
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
+      body: JSON.stringify(body)
+    });
     const data = await resp.json();
     if (!resp.ok) {
       const msg = (data.error && data.error.message) || ('request failed with status ' + resp.status);
       throw new Error(msg);
     }
-    const cand = data.candidates && data.candidates[0];
-    const text = cand && cand.content && cand.content.parts && cand.content.parts.map(p => p.text || '').join('');
+    const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if (!text) throw new Error('empty response from the model');
     return text;
   }
@@ -179,7 +137,7 @@
       '{"coreValues": string[], "communicationStyle": string, "conflictStyle": string, "noveltyVsRoutine": string, "humorStyle": string, "dealbreakers": string[]}. ' +
       'Base every field strictly on what is stated or clearly implied in the transcript below. Keep each field short, a phrase not a paragraph.\n\n' +
       'Transcript (' + label + '):\n' + transcript;
-    const raw = await callGemini(prompt, true);
+    const raw = await callGroq(prompt, true);
     return parseJSON(raw);
   }
 
@@ -198,7 +156,7 @@
       'Person A traits: ' + JSON.stringify(traitsA) + '\n' +
       'Person B traits: ' + JSON.stringify(traitsB) + '\n' +
       'Research snippets: ' + JSON.stringify(snippets.map(s => ({ id: s.id, text: s.text })));
-    return (await callGemini(prompt, false)).trim();
+    return (await callGroq(prompt, false)).trim();
   }
 
   async function evaluateNarrative(narrative, traitsA, traitsB, snippets) {
@@ -210,7 +168,7 @@
       'Person A traits: ' + JSON.stringify(traitsA) + '\n' +
       'Person B traits: ' + JSON.stringify(traitsB) + '\n' +
       'Research snippets: ' + JSON.stringify(snippets.map(s => ({ id: s.id, text: s.text })));
-    const raw = await callGemini(prompt, true);
+    const raw = await callGroq(prompt, true);
     return parseJSON(raw);
   }
 
@@ -275,7 +233,6 @@
 
     const t1 = $('ot-t1').value.trim();
     const t2 = $('ot-t2').value.trim();
-    if (!apiKey) { errBox.style.display = 'block'; errBox.textContent = 'Add a Gemini API key first.'; return; }
     if (!t1 || !t2) { errBox.style.display = 'block'; errBox.textContent = 'Both transcripts need at least a sentence to work with.'; return; }
 
     const btn = $('ot-run');
